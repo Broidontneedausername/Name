@@ -1,0 +1,150 @@
+	# 1. Функция для отображения текста на нужном языке
+function Get-LocalizedText {
+    param (
+        [string]$key
+    )
+    $translations = @{
+        "warning" = @{
+            "ru" = "=========================================`n  ВНИМАНИЕ!`n  Использование данного скрипта осуществляется на ваш страх и риск.`n  Создатели скрипта не несут ответственности за возможные повреждения`n  операционной системы, данных, оборудования или любые другие проблемы.`n  Пожалуйста, внимательно следуйте инструкциям.`n  Также отметим, что создатели ненавидят Яндекс.`n  Программу разрабатывал ChatGPT, а не я.`n========================================="
+            "en" = "=========================================`n  WARNING!`n  Using this script is at your own risk.`n  The creators are not responsible for any damage to`n  the operating system, data, hardware, or any other issues.`n  Please follow the instructions carefully.`n  Also, the creators hate Yandex.`n  The program was developed by ChatGPT, not me.`n========================================="
+        }
+        "menu" = @{
+            "ru" = "Выберите действие:`n1: Восстановить права доступа на системные файлы`n2: Выдать права TrustedInstaller на системные файлы`n3: Включить безопасный режим`n4: Выключить безопасный режим (восстановить обычную загрузку)`n5: Выдать полные права указанному пользователю`n6: Доступ к корневой папке подключенного телефона через ADB`n7: Выйти"
+            "en" = "Choose action:`n1: Restore permissions for system files`n2: Grant TrustedInstaller rights to system files`n3: Enable Safe Mode`n4: Disable Safe Mode (restore normal boot)`n5: Grant full rights to a specified user`n6: Access root folder of connected phone via ADB`n7: Exit"
+        }
+        "incorrect_choice" = @{
+            "ru" = "Неверный выбор. Пожалуйста, введите число от 1 до 7."
+            "en" = "Invalid choice. Please enter a number between 1 and 7."
+        }
+        "exit_message" = @{
+            "ru" = "Выход..."
+            "en" = "Exiting..."
+        }
+    }
+
+    return $translations[$key][$language]
+}
+
+# 2. Функция для логирования действий
+function Log-Action {
+    param (
+        [string]$message
+    )
+    $logPath = "C:\Windows\System32\brawlstars\script_log.txt"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "$timestamp - $message" | Out-File -Append -FilePath $logPath
+}
+
+# 3. Функция проверки системных требований (например, ADB)
+function Check-SystemRequirements {
+    # Проверка наличия ADB
+    $adbPath = (Get-Command adb -ErrorAction SilentlyContinue).Source
+    if (-not $adbPath) {
+        Write-Host "ADB не установлен или не найден в PATH. Установите ADB и добавьте его в PATH."
+        Log-Action "Пользователь не имеет установленного ADB"
+    }
+}
+
+# 4. Функция для отображения часто задаваемых вопросов (FAQ)
+function Show-FAQ {
+    Clear-Host
+    Write-Host "Часто задаваемые вопросы:"
+    Write-Host "1. Как восстановить доступ к системным файлам?"
+    Write-Host "2. Как выключить безопасный режим?"
+    Write-Host "3. Как установить ADB?"
+    Write-Host "4. Как понять, что скрипт не повредил систему?"
+    Write-Host "Введите номер вопроса, чтобы получить ответ."
+    $faqChoice = Read-Host "Введите номер"
+    switch ($faqChoice) {
+        1 { Write-Host "Для восстановления доступа к системным файлам используйте функцию 'Восстановить права доступа на системные файлы'." }
+        2 { Write-Host "Чтобы выключить безопасный режим, выберите 'Выключить безопасный режим' в меню." }
+        3 { Write-Host "ADB можно установить, скачав с официального сайта и добавив в переменную среды PATH." }
+        4 { Write-Host "Если вы следовали инструкциям, система должна работать корректно. В случае сомнений сделайте резервную копию." }
+        default { Write-Host "Неверный выбор." }
+    }
+}
+
+# 5. Функция для проверки и восстановления целостности системных файлов
+function Fix-SystemErrors {
+    if ($IsWindows) {
+        Write-Host "Проверка целостности системных файлов..."
+        sfc /scannow
+        Write-Host "Проверка завершена. Ошибки, если они были, исправлены."
+        Log-Action "Проведена проверка и исправление системных файлов."
+    } elseif ($IsLinux) {
+        Write-Host "Проверка целостности файлов Linux..."
+        sudo dpkg --configure -a
+        sudo apt-get install -f
+        Write-Host "Проверка завершена. Ошибки, если они были, исправлены."
+        Log-Action "Проведена проверка и исправление файлов на Linux."
+    }
+}
+
+# 6. Функция для удаления изменений, сделанных скриптом
+function Remove-ScriptChanges {
+    if ($IsWindows) {
+        $scriptCopyPath = "C:\Windows\System32\brawlstars\brawlstars.ps1"
+        if (Test-Path -Path $scriptCopyPath) {
+            Remove-Item -Path $scriptCopyPath
+            Write-Host "Копия скрипта была удалена."
+            Log-Action "Удалена копия скрипта из System32."
+        }
+    } elseif ($IsLinux) {
+        $scriptCopyPath = "/usr/local/bin/brawlstars.sh"
+        if (Test-Path -Path $scriptCopyPath) {
+            Remove-Item -Path $scriptCopyPath
+            Write-Host "Копия скрипта была удалена."
+            Log-Action "Удалена копия скрипта с /usr/local/bin."
+        }
+    }
+}
+
+# 7. Проверка операционной системы
+$IsWindows = $false
+$IsLinux = $false
+
+if ($IsWindows) {
+    $system32Path = "C:\Windows\System32\brawlstars"
+    if (-not (Test-Path -Path $system32Path)) {
+        Write-Host "Создание папки в System32..."
+        New-Item -Path $system32Path -ItemType Directory
+    } else {
+        Write-Host "Папка brawlstars уже существует."
+    }
+} elseif ($IsLinux) {
+    $system32Path = "/usr/local/bin/brawlstars"
+    if (-not (Test-Path -Path $system32Path)) {
+        Write-Host "Создание папки в /usr/local/bin..."
+        New-Item -Path $system32Path -ItemType Directory
+    } else {
+        Write-Host "Папка brawlstars уже существует."
+    }
+}
+
+# 8. Копирование скрипта в папку в зависимости от ОС
+$scriptPath = $MyInvocation.MyCommand.Path
+if ($IsWindows) {
+    $copyPath = Join-Path -Path $system32Path -ChildPath "brawlstars.ps1"
+} elseif ($IsLinux) {
+    $copyPath = Join-Path -Path $system32Path -ChildPath "brawlstars.sh"
+}
+
+# Получаем размер файла
+$scriptSize = (Get-Item $scriptPath).Length
+
+# Проверка размера скрипта (максимум 5 ГБ = 5 * 1024 * 1024 * 1024 байт)
+$maxSize = 5GB
+
+if ($scriptSize -gt $maxSize) {
+    Write-Host "Ошибка: Размер файла скрипта превышает 5 ГБ. Копирование невозможно."
+    exit
+}
+
+Write-Host "Копирование скрипта в папку..."
+Copy-Item -Path $scriptPath -Destination $copyPath
+Log-Action "Скрипт успешно скопирован."
+
+# 9. Создание "root" терминала с отображением имени пользователя
+$global:rootPrompt = "root#($env:UserName)> "
+
+function
